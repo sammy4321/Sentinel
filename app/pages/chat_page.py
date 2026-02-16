@@ -9,13 +9,14 @@ from PyQt6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QWidget, QScrollArea,
     QTextEdit, QPushButton, QSizePolicy, QFileDialog, QFrame, QApplication,
 )
-from PyQt6.QtCore import Qt, QTimer, QEvent, QRectF
+from PyQt6.QtCore import Qt, QTimer, QEvent, QRectF, QBuffer, QIODevice
 from PyQt6.QtGui import QFont, QColor, QPainter, QPainterPath
 import time
 
 from app.pages.base_page import BasePage
 from app.constants import COLORS
 from app.openrouter import OpenRouterClient, ChatWorker
+from app.icons import draw_icon
 
 
 class ChatPage(BasePage):
@@ -144,6 +145,26 @@ class ChatPage(BasePage):
         self._file_btn.clicked.connect(self._attach_file)
         bar_layout.addWidget(self._file_btn)
 
+        # ── Screenshot button (camera icon) ──────────────────────
+        self._screen_btn = _VectorButton("camera")
+        self._screen_btn.setFixedSize(32, 32)
+        self._screen_btn.setToolTip("Take screenshot")
+        self._screen_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(255,255,255,6);
+                border: none;
+                border-radius: 16px;
+            }
+            QPushButton:hover {
+                background: rgba(255,255,255,14);
+            }
+            QPushButton:pressed {
+                background: rgba(50,120,240,30);
+            }
+        """)
+        self._screen_btn.clicked.connect(self._initiate_screenshot)
+        bar_layout.addWidget(self._screen_btn)
+
         # ── Text input (borderless, transparent) ──────────────────
         self._input = QTextEdit()
         self._input.setPlaceholderText("Ask Sentinel anything...")
@@ -239,6 +260,61 @@ class ChatPage(BasePage):
             except Exception as e:
                 self._file_label.setText(f"Error: {e}")
                 self._file_label.setFixedHeight(16)
+
+    def _initiate_screenshot(self):
+        """Hide app and schedule screenshot."""
+        self._windows_to_restore = []
+        # Find all top-level widgets of the application
+        for widget in QApplication.topLevelWidgets():
+            if not widget.isHidden() and widget.isVisible():
+                self._windows_to_restore.append(widget)
+                widget.hide()
+        
+        # Wait for the window manager to process the hide
+        QTimer.singleShot(300, self._capture_and_restore)
+
+    def _capture_and_restore(self):
+        """Capture screen and restore app visibility."""
+        screen = self.screen()
+        if not screen:
+            screen = QApplication.primaryScreen()
+        
+        # Grab the entire screen (window=0)
+        pixmap = screen.grabWindow(0)
+        
+        # Restore windows
+        for widget in self._windows_to_restore:
+            widget.show()
+            # Try to re-assert "on top" if relevant (Mac-specific fix)
+            if hasattr(widget, '_reassert_on_top'):
+                try:
+                    widget._reassert_on_top()
+                except Exception:
+                    pass
+        
+        self._process_screenshot(pixmap)
+
+    def _process_screenshot(self, pixmap):
+        """Convert pixmap to base64 and attach."""
+        if pixmap.isNull():
+            self._file_label.setText("Error: Screenshot failed")
+            self._file_label.setFixedHeight(16)
+            return
+
+        ba = QBuffer()
+        ba.open(QIODevice.OpenModeFlag.WriteOnly)
+        pixmap.save(ba, "PNG") 
+        data = ba.data().toBase64().data().decode("utf-8")
+        
+        filename = f"screenshot_{int(time.time())}.png"
+        
+        self._attached_file = {
+            "name": filename,
+            "content": f"data:image/png;base64,{data}",
+            "is_image": True
+        }
+        self._file_label.setText(filename)
+        self._file_label.setFixedHeight(16)
 
     # ── Send / receive ────────────────────────────────────────────
 
@@ -716,5 +792,37 @@ class _TypingIndicator(QWidget):
                 dx - self._DOT_R, cy - self._DOT_R,
                 self._DOT_R * 2, self._DOT_R * 2,
             ))
+        p.end()
+
+
+class _VectorButton(QPushButton):
+    """Button that draws a vector icon using app.icons.draw_icon."""
+
+    def __init__(self, icon_id: str, parent=None):
+        super().__init__(parent)
+        self._icon_id = icon_id
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def paintEvent(self, event):
+        # Draw standard background (stylesheet)
+        super().paintEvent(event)
+
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+        # Color based on state (matching other chat buttons)
+        if self.isDown():
+            c = QColor(255, 255, 255, 255)
+        elif self.underMouse():
+            c = QColor(255, 255, 255, 220)
+        else:
+            c = QColor(255, 255, 255, 150)
+
+        # Center the icon (size 18 seems appropriate for 32x32 button)
+        s = 18
+        off_x = (self.width() - s) / 2
+        off_y = (self.height() - s) / 2
+        
+        draw_icon(p, self._icon_id, QRectF(off_x, off_y, s, s), c)
         p.end()
 
