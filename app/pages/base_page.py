@@ -41,9 +41,9 @@ class BasePage(QWidget):
         # ── Header: ← Back  |  Title  |  ✕ ───────────────────────
         header = QWidget(self)
         header.setFixedHeight(42)
-        h_layout = QHBoxLayout(header)
-        h_layout.setContentsMargins(4, 4, 4, 4)
-        h_layout.setSpacing(6)
+        self._header_layout = QHBoxLayout(header)
+        self._header_layout.setContentsMargins(4, 4, 4, 4)
+        self._header_layout.setSpacing(6)
 
         # Back button (transparent bg)
         self._back_btn = QPushButton("←", header)
@@ -51,7 +51,7 @@ class BasePage(QWidget):
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._back_btn.setStyleSheet(self._icon_button_style())
         self._back_btn.clicked.connect(self.back_clicked.emit)
-        h_layout.addWidget(self._back_btn)
+        self._header_layout.addWidget(self._back_btn)
 
         # Title
         title = QLabel(self.PAGE_TITLE, header)
@@ -60,9 +60,9 @@ class BasePage(QWidget):
         title.setFont(title_font)
         title.setStyleSheet("color: rgba(255,255,255,235); background: transparent;")
         title.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
-        h_layout.addWidget(title)
+        self._header_layout.addWidget(title)
 
-        h_layout.addStretch()
+        self._header_layout.addStretch()
 
         # Cancel / Close button (✕, transparent bg)
         self._cancel_btn = QPushButton("✕", header)
@@ -70,7 +70,7 @@ class BasePage(QWidget):
         self._cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._cancel_btn.setStyleSheet(self._icon_button_style())
         self._cancel_btn.clicked.connect(self.cancel_clicked.emit)
-        h_layout.addWidget(self._cancel_btn)
+        self._header_layout.addWidget(self._cancel_btn)
 
         layout.addWidget(header)
 
@@ -87,8 +87,8 @@ class BasePage(QWidget):
         # ── Content area (subclass fills this) ────────────────────
         self._content_widget = QWidget(self)
         self._content_layout = QVBoxLayout(self._content_widget)
-        self._content_layout.setContentsMargins(8, 0, 8, 0)
-        self._content_layout.setSpacing(8)
+        self._content_layout.setContentsMargins(0, 0, 0, 0)
+        self._content_layout.setSpacing(0)
 
         # Let subclass populate content
         self._build_content(self._content_layout)
@@ -96,8 +96,7 @@ class BasePage(QWidget):
         self._content_widget.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding,
         )
-        layout.addWidget(self._content_widget)
-        layout.addStretch()
+        layout.addWidget(self._content_widget, 1)  # stretch=1 fills remaining space
 
     def _build_content(self, layout: QVBoxLayout):
         """Override in subclass to add page-specific content."""

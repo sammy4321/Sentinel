@@ -46,6 +46,7 @@ class FloatingButton(QWidget):
             | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
         self.label = QLabel(self)
         image_path = os.path.join("assets", "icon.png")
@@ -59,9 +60,9 @@ class FloatingButton(QWidget):
                 print("Failed to load image data")
                 sys.exit(1)
 
-            if pixmap.width() > 100 or pixmap.height() > 100:
+            if pixmap.width() > 130 or pixmap.height() > 130:
                 pixmap = pixmap.scaled(
-                    100, 100,
+                    130, 130,
                     Qt.AspectRatioMode.KeepAspectRatio,
                     Qt.TransformationMode.SmoothTransformation,
                 )

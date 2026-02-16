@@ -86,7 +86,7 @@ class PopupMenu(QWidget):
         self._stack.addWidget(main_page)
 
         # ── Page 1: Chat ──────────────────────────────────────────
-        self._chat_page = ChatPage()
+        self._chat_page = ChatPage(model=self._model, api_key=self._api_key)
         self._chat_page.back_clicked.connect(self._go_back)
         self._chat_page.cancel_clicked.connect(self.animate_hide)
         self._stack.addWidget(self._chat_page)
